@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>UMF Miami 2026 — Set Times Tracker</title>
+<!-- PWA / iPhone home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="UMF 2026">
+<meta name="theme-color" content="#07070f">
+<link rel="apple-touch-icon" id="appIcon">
+<link rel="manifest" id="manifest">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070f;--surface:#10101c;--surface2:#18182a;--border:#1e1e35;
+  --text:#eeeeff;--muted:#6666aa;
+  --accent:#c94aff;--accent2:#00d4ff;
+  --main:#ff3355;--worldwide:#4361ee;--mega:#aa00ff;
+  --hekate:#ff1f72;--live:#00c8ff;--radio:#ff8800;--oasis:#00e699;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* ── HEADER ── */
+header{
+  background:linear-gradient(135deg,#07070f 0%,#150830 50%,#07070f 100%);
+  border-bottom:1px solid #2a1050;
+  padding:14px 20px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:200;
+}
+.logo-block{}
+.logo{font-size:1.35rem;font-weight:900;letter-spacing:3px;text-transform:uppercase;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:.7rem;color:var(--muted);letter-spacing:2px;margin-top:2px;text-transform:uppercase}
+.header-right{display:flex;align-items:center;gap:10px}
+.alert-mins{
+  background:var(--surface2);border:1px solid #2a1050;color:var(--muted);
+  padding:6px 10px;border-radius:8px;font-size:.75rem;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:.2s
+}
+.alert-mins select{background:transparent;border:none;color:var(--muted);font-size:.75rem;cursor:pointer;outline:none}
+.notif-btn{
+  background:var(--surface2);border:1px solid #2a1050;color:var(--muted);
+  padding:8px 14px;border-radius:20px;cursor:pointer;font-size:.82rem;
+  font-weight:600;transition:.2s;white-space:nowrap
+}
+.notif-btn:hover{border-color:var(--accent);color:var(--text)}
+.notif-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(201,74,255,.1)}
+
+/* ── DAY TABS ── */
+.day-tabs{background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 20px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.day-tabs::-webkit-scrollbar{display:none}
+.day-tab{
+  padding:13px 20px;cursor:pointer;font-size:.85rem;font-weight:700;
+  color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;
+  transition:.2s;letter-spacing:.5px;text-transform:uppercase
+}
+.day-tab:hover{color:var(--text)}
+.day-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.day-tab.fav-tab.active{color:#ffd700;border-bottom-color:#ffd700}
+
+/* ── STAGE FILTERS ── */
+.stage-bar{
+  padding:10px 20px;display:flex;gap:7px;overflow-x:auto;
+  background:var(--bg);border-bottom:1px solid var(--border);scrollbar-width:none
+}
+.stage-bar::-webkit-scrollbar{display:none}
+.s-chip{
+  padding:5px 13px;border-radius:20px;font-size:.72rem;font-weight:700;
+  cursor:pointer;border:1.5px solid #252540;color:var(--muted);
+  white-space:nowrap;transition:.2s;letter-spacing:.5px;text-transform:uppercase;
+  user-select:none
+}
+.s-chip:hover{border-color:#454570;color:var(--text)}
+
+/* ── MAIN CONTENT ── */
+.content{padding:18px 20px;max-width:960px;margin:0 auto}
+
+/* ── NOW PLAYING BANNER ── */
+.now-banner{
+  background:linear-gradient(90deg,rgba(0,230,153,.12),rgba(0,230,153,.04));
+  border:1px solid rgba(0,230,153,.25);border-radius:10px;
+  padding:10px 16px;margin-bottom:18px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.live-dot{width:8px;height:8px;background:#00e699;border-radius:50%;flex-shrink:0;
+  animation:pulse 1.5s ease-in-out infinite}
+.live-tag{color:#00e699;font-weight:800;font-size:.72rem;letter-spacing:1px}
+
+/* ── STAGE SECTION HEADERS ── */
+.stage-header{
+  grid-column:1/-1;
+  display:flex;align-items:center;gap:10px;
+  padding:6px 0 4px;margin-top:8px;
+}
+.stage-header-line{flex:1;height:1px;background:var(--border)}
+.stage-header-text{font-size:.72rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+
+/* ── GRID ── */
+.set-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:11px}
+
+/* ── SET CARD ── */
+.set-card{
+  background:var(--surface);border-radius:12px;padding:14px 16px;
+  border:1px solid var(--border);
+  border-left:3px solid var(--sc);
+  transition:transform .15s,box-shadow .15s,border-color .15s,background .15s;
+  position:relative;
+  cursor:pointer;
+  -webkit-tap-highlight-color:rgba(201,74,255,.15);
+  user-select:none;
+}
+.set-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.5);border-color:var(--sc)}
+.set-card:active{transform:scale(.97);background:var(--surface2)}
+.set-card.now{background:linear-gradient(135deg,var(--surface),rgba(0,230,153,.06))}
+.set-card.past{opacity:.38;pointer-events:none}
+.set-card.faved{border-color:var(--sc);background:color-mix(in srgb,var(--surface) 88%,var(--sc) 12%)}
+
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.artist{font-size:.97rem;font-weight:700;line-height:1.3;flex:1}
+.fav-btn{
+  background:none;border:none;cursor:pointer;
+  font-size:1.4rem;line-height:1;
+  opacity:.55;transition:.2s;
+  padding:2px 4px;flex-shrink:0;
+  border-radius:6px;
+}
+.fav-btn:hover{opacity:.9;background:rgba(255,255,255,.08)}
+.fav-btn.on{opacity:1;filter:drop-shadow(0 0 6px gold)}
+
+.card-mid{margin-top:9px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.stage-pill{
+  font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+  padding:3px 8px;border-radius:10px;background:rgba(255,255,255,.06);color:var(--sc);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px
+}
+.set-time{font-size:.98rem;font-weight:800;color:var(--sc);flex-shrink:0}
+
+.card-bottom{
+  margin-top:10px;padding-top:10px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;font-size:.8rem;min-height:26px
+}
+.cd-label{color:var(--muted)}
+.cd-val{font-weight:700;font-variant-numeric:tabular-nums}
+.cd-val.soon{color:#ff9933}
+.cd-val.urgent{color:#ff4444;animation:pulse 1s ease-in-out infinite}
+.cd-val.live{color:#00e699;font-weight:800}
+.cd-val.ended{color:var(--muted)}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .icon{font-size:3rem;margin-bottom:12px;display:block}
+.empty p{font-size:.95rem}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#252540;border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:#353560}
+
+@media(max-width:480px){
+  header{padding:12px 14px}.logo{font-size:1.1rem}
+  .content{padding:14px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-block">
+    <div class="logo">Ultra Miami 2026</div>
+    <div class="logo-sub">March 27–29 · Bayfront Park</div>
+  </div>
+  <div class="header-right">
+    <div class="alert-mins">
+      🔔 Alert
+      <select id="alertMins" onchange="alertMinutes=+this.value">
+        <option value="5">5 min</option>
+        <option value="10" selected>10 min</option>
+        <option value="15">15 min</option>
+        <option value="20">20 min</option>
+      </select>
+      before
+    </div>
+    <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()">🔕 Alerts Off</button>
+  </div>
+</header>
+
+<div class="day-tabs" id="dayTabs">
+  <div class="day-tab active" data-day="0">Fri Mar 27</div>
+  <div class="day-tab" data-day="1">Sat Mar 28</div>
+  <div class="day-tab" data-day="2">Sun Mar 29</div>
+  <div class="day-tab fav-tab" data-day="fav">⭐ My Schedule</div>
+</div>
+
+<div class="stage-bar" id="stageBar"></div>
+
+<div class="content">
+  <div id="nowBanner" class="now-banner" style="display:none"></div>
+  <div class="set-grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">
+    <span class="icon">⭐</span>
+    <p>No favorites yet — tap ☆ on any set to add it here.</p>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════
+const DAYS = ['2026-03-27','2026-03-28','2026-03-29'];
+const DAY_LABELS = ['Friday, March 27','Saturday, March 28','Sunday, March 29'];
+
+const STAGES = [
+  {id:'main',      name:'Main Stage',       color:'#ff3355', icon:'🏟'},
+  {id:'worldwide', name:'Worldwide Stage',   color:'#4d6eff', icon:'🌐'},
+  {id:'mega',      name:'Megastructure',     color:'#bb00ff', icon:'⚡'},
+  {id:'hekate',    name:'Hekate / M2',       color:'#ff1f72', icon:'🔮'},
+  {id:'live',      name:'Live Stage',        color:'#00c8ff', icon:'🎸'},
+  {id:'radio',     name:'UMF Radio',         color:'#ff8800', icon:'📡'},
+  {id:'oasis',     name:'Oasis',             color:'#00e699', icon:'🌴'},
+];
+
+// Stage day-specific names
+const STAGE_DAY_NAMES = {
+  hekate: ['Hekate','M2','The Cove'],
+  radio:  ['UMF Radio','Dirty Worx / UMF Radio','Live from Earth'],
+};
+
+const SETS = [
+  // ══ MAIN STAGE ══
+  // Friday
+  {id:1,  artist:'Major Lazer',                           stage:'main', day:0, time:'22:45'},
+  {id:2,  artist:'Alesso b2b Martin Garrix',              stage:'main', day:0, time:'21:20'},
+  {id:3,  artist:'BZRP',                                  stage:'main', day:0, time:'20:05'},
+  {id:4,  artist:'Illenium',                              stage:'main', day:0, time:'19:00'},
+  {id:5,  artist:'Worship',                               stage:'main', day:0, time:'17:55'},
+  {id:6,  artist:'Voyd',                                  stage:'main', day:0, time:'16:50'},
+  {id:7,  artist:'Frank Walker',                          stage:'main', day:0, time:'16:00'},
+  // Saturday
+  {id:8,  artist:'Sebastian Ingrosso b2b Steve Angello',  stage:'main', day:1, time:'22:45'},
+  {id:9,  artist:'Armin Van Buuren',                      stage:'main', day:1, time:'21:35'},
+  {id:10, artist:'Hardwell',                              stage:'main', day:1, time:'20:30'},
+  {id:11, artist:'Excision',                              stage:'main', day:1, time:'19:25'},
+  {id:12, artist:'Steve Aoki',                            stage:'main', day:1, time:'18:20'},
+  {id:13, artist:'Alan Walker',                           stage:'main', day:1, time:'17:15'},
+  {id:14, artist:'Loud Luxury',                           stage:'main', day:1, time:'16:10'},
+  {id:15, artist:'Nicky Romero',                          stage:'main', day:1, time:'15:05'},
+  {id:16, artist:'Haló',                                  stage:'main', day:1, time:'14:00'},
+  {id:17, artist:'Mykris',                                stage:'main', day:1, time:'12:55'},
+  {id:18, artist:'Gil Glaze',                             stage:'main', day:1, time:'12:00'},
+  // Sunday
+  {id:19, artist:'John Summit',                           stage:'main', day:2, time:'20:45'},
+  {id:20, artist:'DJ Snake',                              stage:'main', day:2, time:'19:35'},
+  {id:21, artist:'Afrojack',                              stage:'main', day:2, time:'18:30'},
+  {id:22, artist:'Marlon Hoffstadt',                      stage:'main', day:2, time:'17:25'},
+  {id:23, artist:'Artbat',                                stage:'main', day:2, time:'16:20'},
+  {id:24, artist:'Maddix',                                stage:'main', day:2, time:'15:15'},
+  {id:25, artist:'R3HAB',                                 stage:'main', day:2, time:'14:10'},
+  {id:26, artist:'Me Nü',                                 stage:'main', day:2, time:'13:05'},
+  {id:27, artist:'Kapuchon',                              stage:'main', day:2, time:'12:15'},
+
+  // ══ WORLDWIDE STAGE ══
+  // Friday
+  {id:28, artist:'Armin Van Buuren',                      stage:'worldwide', day:0, time:'22:30'},
+  {id:29, artist:'Armin Van Buuren b2b Marlon Hoffstadt', stage:'worldwide', day:0, time:'21:00'},
+  {id:30, artist:'Lilly Palmer',                          stage:'worldwide', day:0, time:'20:00'},
+  {id:31, artist:'Vini Vici',                             stage:'worldwide', day:0, time:'19:00'},
+  {id:32, artist:'Superstrings',                          stage:'worldwide', day:0, time:'18:00'},
+  {id:33, artist:'Matty Ralph',                           stage:'worldwide', day:0, time:'17:00'},
+  {id:34, artist:'Prada2000',                             stage:'worldwide', day:0, time:'16:00'},
+  // Saturday
+  {id:35, artist:'iSoxo',                                 stage:'worldwide', day:1, time:'23:00'},
+  {id:36, artist:'Vbusuke Vukimatsu',                     stage:'worldwide', day:1, time:'22:00'},
+  {id:37, artist:'Hamdi',                                 stage:'worldwide', day:1, time:'21:00'},
+  {id:38, artist:'Outlaw b2b Trym',                       stage:'worldwide', day:1, time:'20:00'},
+  {id:39, artist:'Kai Wachi',                             stage:'worldwide', day:1, time:'19:00'},
+  {id:40, artist:'Bou',                                   stage:'worldwide', day:1, time:'18:00'},
+  {id:41, artist:'Holi',                                  stage:'worldwide', day:1, time:'17:00'},
+  {id:42, artist:'Armnhmr',                               stage:'worldwide', day:1, time:'16:00'},
+  {id:43, artist:'Daniel Allan',                          stage:'worldwide', day:1, time:'15:00'},
+  {id:44, artist:'Sidequest',                             stage:'worldwide', day:1, time:'14:00'},
+  {id:45, artist:'Distinct Motive',                       stage:'worldwide', day:1, time:'13:00'},
+  {id:46, artist:'Julian Cross',                          stage:'worldwide', day:1, time:'12:10'},
+  // Sunday
+  {id:47, artist:'Wankdat',                               stage:'worldwide', day:2, time:'20:30'},
+  {id:48, artist:'Ray Volpe b2b Sullivan King',           stage:'worldwide', day:2, time:'19:00'},
+  {id:49, artist:'Peekaboo',                              stage:'worldwide', day:2, time:'18:00'},
+  {id:50, artist:'Holy Priest',                           stage:'worldwide', day:2, time:'17:00'},
+  {id:51, artist:'Andy C',                                stage:'worldwide', day:2, time:'16:00'},
+  {id:52, artist:'Layz',                                  stage:'worldwide', day:2, time:'15:00'},
+  {id:53, artist:'Bolo',                                  stage:'worldwide', day:2, time:'14:00'},
+  {id:54, artist:'JSTJR',                                 stage:'worldwide', day:2, time:'13:00'},
+  {id:55, artist:'Big Florida',                           stage:'worldwide', day:2, time:'12:00'},
+
+  // ══ MEGASTRUCTURE ══
+  // Friday
+  {id:56, artist:'Eric Prydz',                            stage:'mega', day:0, time:'22:00'},
+  {id:57, artist:'Vintage Culture',                       stage:'mega', day:0, time:'20:30'},
+  {id:58, artist:'Miss Monique',                          stage:'mega', day:0, time:'19:00'},
+  {id:59, artist:'Massano',                               stage:'mega', day:0, time:'17:30'},
+  {id:60, artist:'Mar-T',                                 stage:'mega', day:0, time:'16:00'},
+  // Saturday
+  {id:61, artist:'Carl Cox',                              stage:'mega', day:1, time:'21:00'},
+  {id:62, artist:'Adam Beyer b2b Joseph Capriati',        stage:'mega', day:1, time:'19:00'},
+  {id:63, artist:'Eli Brown',                             stage:'mega', day:1, time:'17:30'},
+  {id:64, artist:'Sasha & John Digweed',                  stage:'mega', day:1, time:'16:00'},
+  {id:65, artist:'Alan Fitzpatrick b2b Marco Faraone',    stage:'mega', day:1, time:'14:30'},
+  {id:66, artist:'Juliet Fox',                            stage:'mega', day:1, time:'13:15'},
+  {id:67, artist:'Andy Pate b2b Rod B.',                  stage:'mega', day:1, time:'12:00'},
+  // Sunday
+  {id:68, artist:'Amelie Lens b2b Sara Landry',           stage:'mega', day:2, time:'20:00'},
+  {id:69, artist:'Boris Brejcha',                         stage:'mega', day:2, time:'18:30'},
+  {id:70, artist:'Adriatique',                            stage:'mega', day:2, time:'17:00'},
+  {id:71, artist:'Argy b2b Mind Against',                 stage:'mega', day:2, time:'15:30'},
+  {id:72, artist:'Scenarios',                             stage:'mega', day:2, time:'14:00'},
+  {id:73, artist:'Bassett b2b Christopher James',         stage:'mega', day:2, time:'12:00'},
+
+  // ══ HEKATE / M2 / THE COVE ══
+  // Friday (Hekate)
+  {id:74, artist:'Sara Landry',                           stage:'hekate', day:0, time:'22:00'},
+  {id:75, artist:'Clara Cuvé',                            stage:'hekate', day:0, time:'20:30'},
+  {id:76, artist:'999999999',                             stage:'hekate', day:0, time:'19:00'},
+  {id:77, artist:'Alta',                                  stage:'hekate', day:0, time:'17:30'},
+  {id:78, artist:'Godtripper',                            stage:'hekate', day:0, time:'16:00'},
+  // Saturday (M2)
+  {id:79, artist:'Joris Voorn b2b Korolova',              stage:'hekate', day:1, time:'22:00'},
+  {id:80, artist:'Cassian',                               stage:'hekate', day:1, time:'20:30'},
+  {id:81, artist:'Colyn b2b Innellea',                    stage:'hekate', day:1, time:'19:00'},
+  {id:82, artist:'Deep Dish',                             stage:'hekate', day:1, time:'17:30'},
+  {id:83, artist:'Kasia',                                 stage:'hekate', day:1, time:'16:00'},
+  {id:84, artist:'Rivo',                                  stage:'hekate', day:1, time:'14:30'},
+  {id:85, artist:'Olympe',                                stage:'hekate', day:1, time:'13:15'},
+  {id:86, artist:'Joa',                                   stage:'hekate', day:1, time:'12:00'},
+  // Sunday (The Cove / Gothic House)
+  {id:87, artist:'The Martinez Brothers',                 stage:'hekate', day:2, time:'20:00'},
+  {id:88, artist:'Dennis Cruz b2b Seth Troxler',          stage:'hekate', day:2, time:'18:00'},
+  {id:89, artist:'Rossi.',                                stage:'hekate', day:2, time:'16:30'},
+  {id:90, artist:'Malóne',                                stage:'hekate', day:2, time:'15:15'},
+  {id:91, artist:'Black Fancy',                           stage:'hekate', day:2, time:'14:00'},
+  {id:92, artist:'Plastik Funk',                          stage:'hekate', day:2, time:'13:00'},
+  {id:93, artist:'M.O.N.R.O.E.',                          stage:'hekate', day:2, time:'12:00'},
+
+  // ══ LIVE STAGE ══
+  // Friday
+  {id:94,  artist:'Levity presents Lasership',            stage:'live', day:0, time:'22:45'},
+  {id:95,  artist:'Of the Trees',                         stage:'live', day:0, time:'21:15'},
+  {id:96,  artist:'Black Tiger Sex Machine',              stage:'live', day:0, time:'19:45'},
+  {id:97,  artist:'Shima',                                stage:'live', day:0, time:'18:15'},
+  {id:98,  artist:'Afrobeta',                             stage:'live', day:0, time:'17:00'},
+  // Saturday
+  {id:99,  artist:'Brutalismus 3000',                     stage:'live', day:1, time:'22:45'},
+  {id:100, artist:'Boys Noize Live',                      stage:'live', day:1, time:'21:30'},
+  {id:101, artist:'Madeon',                               stage:'live', day:1, time:'20:00'},
+  {id:102, artist:'Snow Strippers',                       stage:'live', day:1, time:'18:30'},
+  {id:103, artist:'Confidence Man',                       stage:'live', day:1, time:'17:10'},
+  {id:104, artist:'Miss Bashful',                         stage:'live', day:1, time:'16:00'},
+  // Sunday
+  {id:105, artist:'ZHU',                                  stage:'live', day:2, time:'21:00'},
+  {id:106, artist:'Tim3less',                             stage:'live', day:2, time:'19:30'},
+  {id:107, artist:'Louis The Child',                      stage:'live', day:2, time:'18:15'},
+  {id:108, artist:'Parisi',                               stage:'live', day:2, time:'17:00'},
+  {id:109, artist:'Boiish',                               stage:'live', day:2, time:'16:00'},
+
+  // ══ UMF RADIO / DIRTY WORX / LIVE FROM EARTH ══
+  // Friday
+  {id:110, artist:'Bloody Beetroots (Throwback Electro)', stage:'radio', day:0, time:'23:15'},
+  {id:111, artist:'Riot Ten',                             stage:'radio', day:0, time:'22:15'},
+  {id:112, artist:'Laidback Luke',                        stage:'radio', day:0, time:'21:15'},
+  {id:113, artist:'Special Guest b2b Special Guest',      stage:'radio', day:0, time:'20:15'},
+  {id:114, artist:'Steve Aoki',                           stage:'radio', day:0, time:'19:15'},
+  {id:115, artist:'Jessica Audiffred',                    stage:'radio', day:0, time:'18:15'},
+  {id:116, artist:'Nostalgix',                            stage:'radio', day:0, time:'17:15'},
+  {id:117, artist:'Ookay',                                stage:'radio', day:0, time:'16:30'},
+  {id:118, artist:'Linney',                               stage:'radio', day:0, time:'16:00'},
+  // Saturday
+  {id:119, artist:'Soren',                                stage:'radio', day:1, time:'23:00'},
+  {id:120, artist:'Dual Damage',                          stage:'radio', day:1, time:'22:00'},
+  {id:121, artist:'D-Sturb',                              stage:'radio', day:1, time:'21:00'},
+  {id:122, artist:'Mish',                                 stage:'radio', day:1, time:'20:00'},
+  {id:123, artist:'Da Tweekaz',                           stage:'radio', day:1, time:'19:00'},
+  {id:124, artist:'Coone',                                stage:'radio', day:1, time:'18:00'},
+  {id:125, artist:'The Saints',                           stage:'radio', day:1, time:'17:00'},
+  {id:126, artist:'The Purge',                            stage:'radio', day:1, time:'16:00'},
+  {id:127, artist:'Audiofreq',                            stage:'radio', day:1, time:'15:00'},
+  {id:128, artist:'Darksiderz',                           stage:'radio', day:1, time:'13:30'},
+  {id:129, artist:'C6K',                                  stage:'radio', day:1, time:'12:00'},
+  // Sunday (Live from Earth)
+  {id:130, artist:'Peterblue',                            stage:'radio', day:2, time:'20:30'},
+  {id:131, artist:'DJ Gigola',                            stage:'radio', day:2, time:'19:30'},
+  {id:132, artist:'MCR-T',                                stage:'radio', day:2, time:'18:00'},
+  {id:133, artist:'Fcukers',                              stage:'radio', day:2, time:'16:30'},
+  {id:134, artist:'X Club',                               stage:'radio', day:2, time:'15:00'},
+  {id:135, artist:'Frost Children',                       stage:'radio', day:2, time:'13:30'},
+  {id:136, artist:'Eera',                                 stage:'radio', day:2, time:'12:00'},
+
+  // ══ OASIS ══
+  // Friday
+  {id:137, artist:'Luca Testa',                           stage:'oasis', day:0, time:'23:00'},
+  {id:138, artist:'DJ Hannah',                            stage:'oasis', day:0, time:'22:00'},
+  {id:139, artist:'Rodrigo Vieira',                       stage:'oasis', day:0, time:'21:00'},
+  {id:140, artist:'Tak Shak',                             stage:'oasis', day:0, time:'20:00'},
+  {id:141, artist:'Hymm Marley',                          stage:'oasis', day:0, time:'19:30'},
+  {id:142, artist:'Los de la Vega',                       stage:'oasis', day:0, time:'18:30'},
+  {id:143, artist:'Richard Fraioli b2b Jimmy Page b2b DJ Ideal', stage:'oasis', day:0, time:'17:00'},
+  {id:144, artist:'Nundos',                               stage:'oasis', day:0, time:'16:00'},
+  // Saturday
+  {id:145, artist:'Wally Lopez',                          stage:'oasis', day:1, time:'23:00'},
+  {id:146, artist:'Alexander Som',                        stage:'oasis', day:1, time:'22:00'},
+  {id:147, artist:'Marco Ninni',                          stage:'oasis', day:1, time:'21:00'},
+  {id:148, artist:'Pinto',                                stage:'oasis', day:1, time:'20:00'},
+  {id:149, artist:'Jack Vice',                            stage:'oasis', day:1, time:'19:00'},
+  {id:150, artist:'Lucy Guo',                             stage:'oasis', day:1, time:'18:00'},
+  {id:151, artist:'Bill Kelly',                           stage:'oasis', day:1, time:'17:00'},
+  {id:152, artist:'CVMRN',                                stage:'oasis', day:1, time:'16:00'},
+  {id:153, artist:'Soul Goodman b2b Dabura',              stage:'oasis', day:1, time:'15:00'},
+  {id:154, artist:'Kauro',                                stage:'oasis', day:1, time:'14:00'},
+  {id:155, artist:'Juno b2b Wizzard b2b Bebe Breaks',    stage:'oasis', day:1, time:'13:00'},
+  {id:156, artist:'Cineo',                                stage:'oasis', day:1, time:'12:00'},
+  // Sunday
+  {id:157, artist:'Metaphysical',                         stage:'oasis', day:2, time:'21:00'},
+  {id:158, artist:'X-Con b2b Marvin Delgado b2b CJ',     stage:'oasis', day:2, time:'20:00'},
+  {id:159, artist:'Audiosal',                             stage:'oasis', day:2, time:'19:00'},
+  {id:160, artist:'Purple',                               stage:'oasis', day:2, time:'18:00'},
+  {id:161, artist:'Luke Hunter',                          stage:'oasis', day:2, time:'17:00'},
+  {id:162, artist:'Wags b2b Lemony Snickettes',           stage:'oasis', day:2, time:'16:00'},
+  {id:163, artist:'Sebastian Morxx',                      stage:'oasis', day:2, time:'15:00'},
+  {id:164, artist:'Jay P',                                stage:'oasis', day:2, time:'14:00'},
+  {id:165, artist:'Andy Ares',                            stage:'oasis', day:2, time:'13:00'},
+  {id:166, artist:'Dubplates & Dragons',                  stage:'oasis', day:2, time:'12:00'},
+];
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let currentDay = 0;
+let currentStage = 'all';
+let alertMinutes = 10;
+let notifsOn = false;
+let alerted = new Set();
+
+// Load favorites from localStorage
+let favs = new Set();
+try { favs = new Set(JSON.parse(localStorage.getItem('umf26_favs') || '[]')); } catch(e){}
+
+function saveFavs(){ try{localStorage.setItem('umf26_favs',JSON.stringify([...favs]));}catch(e){} }
+
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
+function getSetDate(s){
+  return new Date(`${DAYS[s.day]}T${s.time}:00`);
+}
+
+function getStageName(stageId, day){
+  if(STAGE_DAY_NAMES[stageId]) return STAGE_DAY_NAMES[stageId][day] || getStage(stageId).name;
+  return getStage(stageId).name;
+}
+
+function getStage(id){ return STAGES.find(s=>s.id===id); }
+
+function fmt12(t){
+  const [h,m]=t.split(':').map(Number);
+  const ap=h>=12?'PM':'AM';
+  const h12=h>12?h-12:(h===0?12:h);
+  return `${h12}:${m.toString().padStart(2,'0')} ${ap}`;
+}
+
+function fmtCountdown(ms){
+  if(ms<=0)return null;
+  const tot=Math.floor(ms/1000);
+  const h=Math.floor(tot/3600);
+  const m=Math.floor((tot%3600)/60);
+  const s=tot%60;
+  if(h>0)return `${h}h ${m.toString().padStart(2,'0')}m`;
+  if(m>0)return `${m}m ${s.toString().padStart(2,'0')}s`;
+  return `${s}s`;
+}
+
+// ═══════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════
+async function toggleNotifs(){
+  if(!('Notification' in window)){alert('Notifications not supported in this browser.');return;}
+  if(!notifsOn){
+    const p=await Notification.requestPermission();
+    if(p==='granted'){
+      notifsOn=true;
+      document.getElementById('notifBtn').textContent='🔔 Alerts On';
+      document.getElementById('notifBtn').classList.add('on');
+    } else {
+      alert('Please allow notifications in your browser settings to receive set alerts.');
+    }
+  } else {
+    notifsOn=false;
+    document.getElementById('notifBtn').textContent='🔕 Alerts Off';
+    document.getElementById('notifBtn').classList.remove('on');
+  }
+}
+
+function checkNotifs(){
+  if(!notifsOn)return;
+  const now=new Date();
+  SETS.forEach(s=>{
+    if(alerted.has(s.id))return;
+    const dt=getSetDate(s);
+    const minsUntil=(dt-now)/60000;
+    if(minsUntil>0&&minsUntil<=alertMinutes){
+      alerted.add(s.id);
+      const stage=getStage(s.stage);
+      new Notification(`${stage.icon} Starting in ~${Math.ceil(minsUntil)} min`,{
+        body:`${s.artist}\n${getStageName(s.stage,s.day)}  ·  ${fmt12(s.time)}`,
+      });
+    }
+  });
+}
+
+// ═══════════════════════════════════════
+// UI CONTROLS
+// ═══════════════════════════════════════
+function setDay(day){
+  currentDay=day;
+  currentStage='all';
+  document.querySelectorAll('.day-tab').forEach((t,i)=>{
+    t.classList.toggle('active', day==='fav'?i===3:i===day);
+  });
+  const bar=document.getElementById('stageBar');
+  bar.style.display=day==='fav'?'none':'flex';
+  // reset stage chips
+  document.querySelectorAll('.s-chip').forEach(c=>c.classList.remove('active'));
+  const all=document.querySelector('[data-s="all"]');
+  if(all){styleChipActive(all,'all');all.classList.add('active');}
+  render();
+}
+
+function setStage(stageId){
+  currentStage=stageId;
+  document.querySelectorAll('.s-chip').forEach(c=>{
+    const active=c.getAttribute('data-s')===stageId;
+    c.classList.toggle('active',active);
+    if(active) styleChipActive(c,stageId);
+    else resetChip(c);
+  });
+  render();
+}
+
+function styleChipActive(el,stageId){
+  if(stageId==='all'){
+    el.style.cssText='background:rgba(201,74,255,.15);border-color:#c94aff;color:#c94aff';
+  } else {
+    const s=getStage(stageId);
+    if(s) el.style.cssText=`background:${s.color}22;border-color:${s.color};color:${s.color}`;
+  }
+}
+function resetChip(el){el.style.cssText='';}
+
+function toggleFav(id,e){
+  e&&e.stopPropagation();
+  if(favs.has(id))favs.delete(id);else favs.add(id);
+  saveFavs();
+  render();
+}
+
+// ═══════════════════════════════════════
+// BUILD STAGE FILTER BAR
+// ═══════════════════════════════════════
+function buildStageBar(){
+  const bar=document.getElementById('stageBar');
+  let html=`<div class="s-chip active" data-s="all" style="background:rgba(201,74,255,.15);border-color:#c94aff;color:#c94aff">All Stages</div>`;
+  STAGES.forEach(s=>{
+    html+=`<div class="s-chip" data-s="${s.id}">${s.icon} ${s.name}</div>`;
+  });
+  bar.innerHTML=html;
+}
+
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
+function render(){
+  const now=new Date();
+  const grid=document.getElementById('grid');
+  const empty=document.getElementById('empty');
+  const banner=document.getElementById('nowBanner');
+
+  // Filter sets
+  let sets;
+  if(currentDay==='fav'){
+    sets=SETS.filter(s=>favs.has(s.id)).sort((a,b)=>{
+      if(a.day!==b.day)return a.day-b.day;
+      return a.time.localeCompare(b.time);
+    });
+  } else {
+    sets=SETS
+      .filter(s=>s.day===currentDay&&(currentStage==='all'||s.stage===currentStage))
+      .sort((a,b)=>a.time.localeCompare(b.time));
+  }
+
+  // Now-playing banner (all days)
+  const nowPlaying=SETS.filter(s=>{
+    const start=getSetDate(s);
+    const end=new Date(start.getTime()+75*60000);
+    return now>=start&&now<end;
+  });
+  if(nowPlaying.length){
+    banner.style.display='flex';
+    banner.innerHTML=`<div class="live-dot"></div><span class="live-tag">LIVE NOW</span>`
+      +nowPlaying.map(s=>{
+        const st=getStage(s.stage);
+        return `<span style="color:${st.color};font-weight:700">${s.artist}</span>`
+          +`<span style="color:var(--muted);font-size:.75rem"> @ ${getStageName(s.stage,s.day)}</span>`;
+      }).join('<span style="color:var(--muted);margin:0 5px">·</span>');
+  } else {
+    banner.style.display='none';
+  }
+
+  if(!sets.length){
+    grid.innerHTML='';
+    empty.style.display='block';
+    empty.innerHTML=currentDay==='fav'
+      ?'<span class="icon">⭐</span><p>No favorites yet — tap ☆ on any set to save it here.</p>'
+      :'<span class="icon">🎵</span><p>No sets match this filter.</p>';
+    return;
+  }
+  empty.style.display='none';
+
+  // Build HTML
+  let html='';
+  if(currentDay==='fav'){
+    let lastDay=-1;
+    sets.forEach(s=>{
+      if(s.day!==lastDay){
+        html+=`<div class="stage-header"><div class="stage-header-line"></div><div class="stage-header-text" style="color:var(--muted)">${DAY_LABELS[s.day]}</div><div class="stage-header-line"></div></div>`;
+        lastDay=s.day;
+      }
+      html+=cardHTML(s,now);
+    });
+  } else if(currentStage==='all'){
+    // Group by stage
+    const byStage={};
+    sets.forEach(s=>{if(!byStage[s.stage])byStage[s.stage]=[];byStage[s.stage].push(s);});
+    STAGES.forEach(st=>{
+      if(!byStage[st.id])return;
+      const sName=getStageName(st.id,currentDay);
+      html+=`<div class="stage-header"><div class="stage-header-line" style="background:${st.color}33"></div><div class="stage-header-text" style="color:${st.color}">${st.icon} ${sName}</div><div class="stage-header-line" style="background:${st.color}33"></div></div>`;
+      byStage[st.id].forEach(s=>html+=cardHTML(s,now));
+    });
+  } else {
+    sets.forEach(s=>html+=cardHTML(s,now));
+  }
+
+  grid.innerHTML=html;
+}
+
+function cardHTML(s,now){
+  const st=getStage(s.stage);
+  const stageName=getStageName(s.stage,s.day);
+  const startDt=getSetDate(s);
+  const endDt=new Date(startDt.getTime()+75*60000);
+  const msUntil=startDt-now;
+  const isNow=now>=startDt&&now<endDt;
+  const isPast=now>=endDt;
+  const isFav=favs.has(s.id);
+
+  let cdHTML='';
+  if(isPast){
+    cdHTML=`<span class="cd-val ended">Ended</span>`;
+  } else if(isNow){
+    const mLeft=Math.ceil((endDt-now)/60000);
+    cdHTML=`<span class="cd-val live">🟢 LIVE · ~${mLeft}m left</span>`;
+  } else {
+    const mins=msUntil/60000;
+    const cd=fmtCountdown(msUntil);
+    let cls='cd-val'+(mins<=5?' urgent':mins<=30?' soon':'');
+    cdHTML=`<span class="cd-label">Starts in</span><span class="${cls}" data-sid="${s.id}">${cd}</span>`;
+  }
+
+  const cls=['set-card',isNow?'now':'',isPast?'past':'',isFav?'faved':''].filter(Boolean).join(' ');
+  return `<div class="${cls}" style="--sc:${st.color}">
+    <div class="card-top">
+      <div class="artist">${s.artist}</div>
+      <button class="fav-btn${isFav?' on':''}" data-fav-id="${s.id}" title="${isFav?'Remove from My Schedule':'Add to My Schedule'}">${isFav?'⭐':'☆'}</button>
+    </div>
+    <div class="card-mid">
+      <div class="stage-pill">${st.icon} ${stageName}</div>
+      <div class="set-time">${fmt12(s.time)}</div>
+    </div>
+    <div class="card-bottom">${cdHTML}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// LIVE TICK
+// ═══════════════════════════════════════
+let needsFullRender=false;
+function tick(){
+  checkNotifs();
+  const now=new Date();
+  let doFull=false;
+  document.querySelectorAll('[data-sid]').forEach(el=>{
+    const s=SETS.find(x=>x.id===+el.getAttribute('data-sid'));
+    if(!s)return;
+    const dt=getSetDate(s);
+    const ms=dt-now;
+    if(ms<=0){doFull=true;return;}
+    el.textContent=fmtCountdown(ms);
+    const mins=ms/60000;
+    el.className='cd-val'+(mins<=5?' urgent':mins<=30?' soon':'');
+  });
+  if(doFull)render();
+}
+
+// ═══════════════════════════════════════
+// EVENT DELEGATION — no inline onclick
+// ═══════════════════════════════════════
+
+// Day tabs
+document.getElementById('dayTabs').addEventListener('click',function(e){
+  const tab=e.target.closest('[data-day]');
+  if(!tab)return;
+  const d=tab.getAttribute('data-day');
+  setDay(d==='fav'?'fav':+d);
+});
+
+// Stage filter chips
+document.getElementById('stageBar').addEventListener('click',function(e){
+  const chip=e.target.closest('[data-s]');
+  if(chip)setStage(chip.getAttribute('data-s'));
+});
+
+// Tap anywhere on a card to star/unstar it
+document.getElementById('grid').addEventListener('click',function(e){
+  // Find the card that was tapped (ignore stage-header clicks)
+  const card=e.target.closest('.set-card');
+  if(!card)return;
+  // Get the fav button inside this card
+  const btn=card.querySelector('[data-fav-id]');
+  if(!btn)return;
+  const id=parseInt(btn.getAttribute('data-fav-id'));
+  if(favs.has(id))favs.delete(id);else favs.add(id);
+  saveFavs();
+  const on=favs.has(id);
+  // Update button
+  btn.classList.toggle('on',on);
+  btn.textContent=on?'⭐':'☆';
+  btn.title=on?'Remove from My Schedule':'Add to My Schedule';
+  // Update card style
+  card.classList.toggle('faved',on);
+  // If on My Schedule tab, re-render so card appears/disappears
+  if(currentDay==='fav')render();
+});
+
+// ═══════════════════════════════════════
+// INIT — runs first, always
+// ═══════════════════════════════════════
+buildStageBar();
+const todayStr=new Date().toISOString().slice(0,10);
+const autoDay=DAYS.indexOf(todayStr);
+if(autoDay>=0) setDay(autoDay);
+else render();
+setInterval(tick,1000);
+
+// ═══════════════════════════════════════
+// PWA — icon + manifest (wrapped so any
+// browser quirk never breaks the app)
+// ═══════════════════════════════════════
+try {
+  const c=document.createElement('canvas');
+  c.width=512;c.height=512;
+  const ctx=c.getContext('2d');
+  const bg=ctx.createLinearGradient(0,0,512,512);
+  bg.addColorStop(0,'#0f0520');bg.addColorStop(1,'#07070f');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,512,512);
+  const glow=ctx.createRadialGradient(256,256,80,256,256,260);
+  glow.addColorStop(0,'rgba(201,74,255,0.35)');glow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=glow;ctx.fillRect(0,0,512,512);
+  ctx.beginPath();ctx.arc(256,256,210,0,Math.PI*2);
+  ctx.strokeStyle='rgba(201,74,255,0.7)';ctx.lineWidth=6;ctx.stroke();
+  ctx.font='bold 220px Arial,sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  const txt=ctx.createLinearGradient(80,150,420,370);
+  txt.addColorStop(0,'#c94aff');txt.addColorStop(1,'#00d4ff');
+  ctx.fillStyle=txt;ctx.fillText('U',256,245);
+  ctx.font='bold 54px Arial,sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.75)';ctx.fillText('MIAMI 2026',256,390);
+  const iconUrl=c.toDataURL('image/png');
+  document.getElementById('appIcon').href=iconUrl;
+  // Manifest — use data: URI so it works on file:// and hosted alike
+  const mf={name:'UMF Miami 2026',short_name:'UMF 2026',
+    start_url:'.',display:'standalone',
+    background_color:'#07070f',theme_color:'#07070f',
+    icons:[{src:iconUrl,sizes:'512x512',type:'image/png'}]};
+  document.getElementById('manifest').href=
+    'data:application/manifest+json,'+encodeURIComponent(JSON.stringify(mf));
+} catch(e){ /* PWA setup failed silently — app still works fine */ }
+</script>
+</body>
+</html>
