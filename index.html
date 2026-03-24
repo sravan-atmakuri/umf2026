@@ -158,6 +158,63 @@ header{
 .empty .icon{font-size:3rem;margin-bottom:12px;display:block}
 .empty p{font-size:.95rem}
 
+/* ── TIMELINE (My Schedule) ── */
+.set-grid.tl-mode{display:block}
+.tl-empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.tl-empty .icon{font-size:2.5rem;display:block;margin-bottom:10px}
+.tl-section{margin-bottom:30px}
+.tl-day-hdr{
+  font-size:.72rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:12px
+}
+.tl-day-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+.tl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.tl-inner{min-width:660px;padding-right:8px}
+.tl-ruler{display:flex;margin-left:78px;margin-bottom:2px}
+.tl-tick{
+  flex:1;font-size:.58rem;color:var(--muted);letter-spacing:-.2px;
+  border-left:1px solid #1e1e35;padding:0 0 4px 3px;line-height:1
+}
+.tl-row{display:flex;align-items:center;margin-bottom:6px;min-height:34px}
+.tl-lbl{
+  width:78px;flex-shrink:0;font-size:.62rem;color:var(--muted);
+  font-weight:600;padding-right:8px;text-align:right;line-height:1.35
+}
+.tl-bars{
+  flex:1;position:relative;height:30px;
+  background:rgba(255,255,255,.025);border-radius:4px;
+  border-left:1px solid #1e1e35;
+}
+.tl-bar{
+  position:absolute;top:2px;height:26px;border-radius:6px;
+  display:flex;align-items:center;padding:0 7px;
+  font-size:.63rem;font-weight:700;color:#fff;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  box-shadow:0 2px 8px rgba(0,0,0,.45);
+  cursor:pointer;transition:.15s;
+  -webkit-tap-highlight-color:rgba(255,255,255,.15);
+}
+.tl-bar:hover{filter:brightness(1.15);transform:scaleY(1.07)}
+.tl-bar:active{filter:brightness(.85)}
+.tl-bar.clash{box-shadow:0 0 0 2px #ff4444,0 2px 8px rgba(0,0,0,.4);z-index:2}
+.tl-grid-lines{
+  position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;
+  display:flex;
+}
+.tl-grid-line{flex:1;border-left:1px solid rgba(255,255,255,.04)}
+/* Clash warnings */
+.clash-box{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.clash-item{
+  background:rgba(255,68,68,.07);border:1px solid rgba(255,68,68,.25);
+  border-radius:8px;padding:8px 12px;font-size:.78rem;
+  display:flex;align-items:flex-start;gap:8px;line-height:1.4
+}
+.clash-icon{font-size:1rem;flex-shrink:0;margin-top:1px}
+.tl-hint{
+  font-size:.68rem;color:var(--muted);text-align:center;
+  margin-top:-4px;margin-bottom:16px;
+}
+
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:var(--bg)}
@@ -632,15 +689,13 @@ function render(){
   // Build HTML
   let html='';
   if(currentDay==='fav'){
-    let lastDay=-1;
-    sets.forEach(s=>{
-      if(s.day!==lastDay){
-        html+=`<div class="stage-header"><div class="stage-header-line"></div><div class="stage-header-text" style="color:var(--muted)">${DAY_LABELS[s.day]}</div><div class="stage-header-line"></div></div>`;
-        lastDay=s.day;
-      }
-      html+=cardHTML(s,now);
-    });
-  } else if(currentStage==='all'){
+    grid.classList.add('tl-mode');
+    html=renderTimeline(sets);
+  } else {
+    grid.classList.remove('tl-mode');
+  }
+
+  if(currentDay!=='fav' && currentStage==='all'){
     // Group by stage
     const byStage={};
     sets.forEach(s=>{if(!byStage[s.stage])byStage[s.stage]=[];byStage[s.stage].push(s);});
@@ -650,11 +705,113 @@ function render(){
       html+=`<div class="stage-header"><div class="stage-header-line" style="background:${st.color}33"></div><div class="stage-header-text" style="color:${st.color}">${st.icon} ${sName}</div><div class="stage-header-line" style="background:${st.color}33"></div></div>`;
       byStage[st.id].forEach(s=>html+=cardHTML(s,now));
     });
-  } else {
+  } else if(currentDay!=='fav'){
     sets.forEach(s=>html+=cardHTML(s,now));
   }
 
   grid.innerHTML=html;
+}
+
+// ═══════════════════════════════════════
+// TIMELINE RENDERER
+// ═══════════════════════════════════════
+function renderTimeline(sets){
+  if(!sets.length) return `<div class="tl-empty"><span class="icon">⭐</span><p>Tap any artist card to add them to your schedule.</p></div>`;
+
+  const NOON=720, SPAN=720; // 12:00 → 00:00 = 720 mins
+
+  function toMins(t){
+    const[h,m]=t.split(':').map(Number);
+    let v=h*60+m;
+    if(v<NOON)v+=1440; // past midnight
+    return v;
+  }
+  function pct(m){return Math.max(0,Math.min(99,(m-NOON)/SPAN*100));}
+
+  // Build hour ruler (12p … 12a = 13 ticks, 12 cells)
+  const hourLabels=['12p','1p','2p','3p','4p','5p','6p','7p','8p','9p','10p','11p','12a'];
+  const rulerHTML=hourLabels.map(l=>`<div class="tl-tick">${l}</div>`).join('');
+  // Grid lines (one per hour cell)
+  const gridLines=Array(12).fill('<div class="tl-grid-line"></div>').join('');
+
+  // Group by day
+  const byDay={0:[],1:[],2:[]};
+  sets.forEach(s=>byDay[s.day].push(s));
+
+  let html='<div class="tl-hint">Tap a bar to remove it from your schedule</div>';
+
+  [0,1,2].forEach(day=>{
+    const daySets=byDay[day];
+    if(!daySets.length)return;
+
+    // Clash detection
+    const clashIds=new Set();
+    const clashPairs=[];
+    for(let i=0;i<daySets.length;i++){
+      for(let j=i+1;j<daySets.length;j++){
+        const a=daySets[i],b=daySets[j];
+        const as=toMins(a.time),ae=as+75;
+        const bs=toMins(b.time),be=bs+75;
+        if(as<be&&ae>bs){
+          clashIds.add(a.id);clashIds.add(b.id);
+          clashPairs.push([a,b]);
+        }
+      }
+    }
+
+    html+=`<div class="tl-section">`;
+    html+=`<div class="tl-day-hdr">${DAY_LABELS[day]}${clashPairs.length?` <span style="color:#ff6666;font-size:.68rem;font-weight:700;letter-spacing:0">⚠️ ${clashPairs.length} clash${clashPairs.length>1?'es':''}</span>`:'&nbsp;✅ No clashes'}</div>`;
+    html+=`<div class="tl-scroll"><div class="tl-inner">`;
+    html+=`<div class="tl-ruler">${rulerHTML}</div>`;
+
+    // One row per stage that has sets this day
+    STAGES.forEach(stage=>{
+      const stageSets=daySets.filter(s=>s.stage===stage.id);
+      if(!stageSets.length)return;
+      const sName=getStageName(stage.id,day);
+      let barsHTML=`<div class="tl-grid-lines">${gridLines}</div>`;
+      stageSets.forEach(s=>{
+        const left=pct(toMins(s.time));
+        const width=Math.max(1.5,75/SPAN*100);
+        const isClash=clashIds.has(s.id);
+        barsHTML+=`<div class="tl-bar${isClash?' clash':''}"
+          style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${stage.color}"
+          data-tl-fav-id="${s.id}"
+          title="${s.artist} · ${fmt12(s.time)} · tap to remove">
+          ${s.artist}
+        </div>`;
+      });
+      html+=`<div class="tl-row">
+        <div class="tl-lbl">${stage.icon} ${sName}</div>
+        <div class="tl-bars">${barsHTML}</div>
+      </div>`;
+    });
+
+    html+=`</div></div>`; // tl-inner, tl-scroll
+
+    // Clash warning list
+    if(clashPairs.length){
+      html+=`<div class="clash-box">`;
+      clashPairs.forEach(([a,b])=>{
+        const stA=getStage(a.stage),stB=getStage(b.stage);
+        html+=`<div class="clash-item">
+          <span class="clash-icon">⚠️</span>
+          <span>
+            <span style="color:${stA.color};font-weight:700">${a.artist}</span>
+            <span style="color:var(--muted)"> (${fmt12(a.time)}) </span>
+            clashes with
+            <span style="color:${stB.color};font-weight:700"> ${b.artist}</span>
+            <span style="color:var(--muted)"> (${fmt12(b.time)})</span>
+          </span>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+
+    html+=`</div>`; // tl-section
+  });
+
+  return html;
 }
 
 function cardHTML(s,now){
@@ -733,25 +890,33 @@ document.getElementById('stageBar').addEventListener('click',function(e){
   if(chip)setStage(chip.getAttribute('data-s'));
 });
 
-// Tap anywhere on a card to star/unstar it
+// Tap a timeline bar → remove from schedule
+// Tap a card → star / unstar
 document.getElementById('grid').addEventListener('click',function(e){
-  // Find the card that was tapped (ignore stage-header clicks)
+
+  // Timeline bar tap (My Schedule view)
+  const bar=e.target.closest('[data-tl-fav-id]');
+  if(bar){
+    const id=parseInt(bar.getAttribute('data-tl-fav-id'));
+    favs.delete(id);
+    saveFavs();
+    render(); // re-render timeline
+    return;
+  }
+
+  // Card tap (day views)
   const card=e.target.closest('.set-card');
   if(!card)return;
-  // Get the fav button inside this card
   const btn=card.querySelector('[data-fav-id]');
   if(!btn)return;
   const id=parseInt(btn.getAttribute('data-fav-id'));
   if(favs.has(id))favs.delete(id);else favs.add(id);
   saveFavs();
   const on=favs.has(id);
-  // Update button
   btn.classList.toggle('on',on);
   btn.textContent=on?'⭐':'☆';
   btn.title=on?'Remove from My Schedule':'Add to My Schedule';
-  // Update card style
   card.classList.toggle('faved',on);
-  // If on My Schedule tab, re-render so card appears/disappears
   if(currentDay==='fav')render();
 });
 
